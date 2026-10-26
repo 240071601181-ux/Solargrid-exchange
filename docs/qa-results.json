@@ -1,0 +1,234 @@
+﻿{
+    "base":  "http://127.0.0.1:5173",
+    "captured_at":  "2026-10-26T08:29:31.2939106Z",
+    "pages":  [
+                  {
+                      "key":  "overview",
+                      "path":  "/",
+                      "heading":  "Microgrid overview",
+                      "headingOk":  true,
+                      "missing":  [
+
+                                  ],
+                      "bodyChars":  3665,
+                      "overflowOk":  true,
+                      "width":  1440,
+                      "scrollWidth":  1440,
+                      "socketText":  "connected",
+                      "loadingBadge":  "loaded"
+                  },
+                  {
+                      "key":  "microgrid",
+                      "path":  "/microgrid",
+                      "heading":  "Microgrid network",
+                      "headingOk":  true,
+                      "missing":  [
+
+                                  ],
+                      "bodyChars":  3692,
+                      "overflowOk":  true,
+                      "width":  1440,
+                      "scrollWidth":  1440,
+                      "socketText":  "connected",
+                      "loadingBadge":  "loaded"
+                  },
+                  {
+                      "key":  "marketplace",
+                      "path":  "/marketplace",
+                      "heading":  "Energy marketplace",
+                      "headingOk":  true,
+                      "missing":  [
+
+                                  ],
+                      "bodyChars":  3600,
+                      "overflowOk":  true,
+                      "width":  1440,
+                      "scrollWidth":  1440,
+                      "socketText":  "connected",
+                      "loadingBadge":  "loaded"
+                  },
+                  {
+                      "key":  "forecasting",
+                      "path":  "/forecasting",
+                      "heading":  "Solar and demand forecast",
+                      "headingOk":  true,
+                      "missing":  [
+
+                                  ],
+                      "bodyChars":  4240,
+                      "overflowOk":  true,
+                      "width":  1440,
+                      "scrollWidth":  1440,
+                      "socketText":  "connected",
+                      "loadingBadge":  "loaded"
+                  },
+                  {
+                      "key":  "optimization",
+                      "path":  "/optimization",
+                      "heading":  "Allocation optimization",
+                      "headingOk":  true,
+                      "missing":  [
+
+                                  ],
+                      "bodyChars":  3052,
+                      "overflowOk":  true,
+                      "width":  1440,
+                      "scrollWidth":  1440,
+                      "socketText":  "connected",
+                      "loadingBadge":  "loaded"
+                  },
+                  {
+                      "key":  "evaluation",
+                      "path":  "/evaluation",
+                      "heading":  "Static vs dynamic pricing",
+                      "headingOk":  true,
+                      "missing":  [
+
+                                  ],
+                      "bodyChars":  4391,
+                      "overflowOk":  true,
+                      "width":  1440,
+                      "scrollWidth":  1440,
+                      "socketText":  "connected",
+                      "loadingBadge":  "loaded"
+                  },
+                  {
+                      "key":  "transactions",
+                      "path":  "/transactions",
+                      "heading":  "Transactions",
+                      "headingOk":  true,
+                      "missing":  [
+
+                                  ],
+                      "bodyChars":  2807,
+                      "overflowOk":  true,
+                      "width":  1440,
+                      "scrollWidth":  1440,
+                      "socketText":  "connected",
+                      "loadingBadge":  "loaded"
+                  },
+                  {
+                      "key":  "settings",
+                      "path":  "/settings",
+                      "heading":  "Settings",
+                      "headingOk":  true,
+                      "missing":  [
+
+                                  ],
+                      "bodyChars":  3719,
+                      "overflowOk":  true,
+                      "width":  1440,
+                      "scrollWidth":  1440,
+                      "socketText":  "connected",
+                      "loadingBadge":  "loaded"
+                  }
+              ],
+    "interactions":  {
+                         "loadingState":  {
+                                              "showsLoadingWeather":  true,
+                                              "showsWeatherUnavailable":  false
+                                          },
+                         "overviewStep":  {
+                                              "tickBefore":  37,
+                                              "tickAfter":  38,
+                                              "status":  200,
+                                              "advanced":  true
+                                          },
+                         "microgrid":  {
+                                           "scenarioStatus":  200,
+                                           "scenarioActive":  true,
+                                           "liveStatus":  200,
+                                           "restoredToLive":  true,
+                                           "drawerOk":  true
+                                       },
+                         "forecasting":  {
+                                             "status":  200,
+                                             "liveBadge":  true,
+                                             "hasHourlyRows":  true,
+                                             "degraded":  false
+                                         },
+                         "marketplace":  {
+                                             "runStatus":  200,
+                                             "executeStatus":  200,
+                                             "showsProposal":  true,
+                                             "showsExecutionResult":  true
+                                         },
+                         "optimization":  {
+                                              "solverStatus":  200,
+                                              "executeStatus":  200,
+                                              "confirmation":  true
+                                          },
+                         "transactions":  {
+                                              "rowsBeforeSearch":  10,
+                                              "rowsAfterSearch":  10,
+                                              "searchStatus":  200,
+                                              "searchTotal":  30,
+                                              "searchBadge":  true,
+                                              "searchFiltered":  true,
+                                              "drawerOk":  true
+                                          },
+                         "evaluation":  {
+                                            "status":  200,
+                                            "ticks":  24,
+                                            "cloud":  25,
+                                            "replayStart":  "2026-10-27T03:30:00Z",
+                                            "hasResult":  true,
+                                            "hasStaticDynamic":  true,
+                                            "methodology":  true,
+                                            "replayStartVisible":  true,
+                                            "honestNote":  true,
+                                            "unmetReduction":  0.0765,
+                                            "utilizationChangePp":  5.22
+                                        },
+                         "settings":  {
+                                          "originalTick":  "5",
+                                          "clientValidation":  true,
+                                          "saveStatus":  200,
+                                          "savedOk":  true,
+                                          "reloadedTick":  "6",
+                                          "persisted":  true,
+                                          "restoreStatus":  200
+                                      },
+                         "mobile":  {
+                                        "heading":  "Microgrid network",
+                                        "overflowOk":  true,
+                                        "width":  390,
+                                        "scrollWidth":  390,
+                                        "pageErrors":  [
+
+                                                       ]
+                                    },
+                         "websocketFailure":  {
+                                                  "restContentStillRendered":  true,
+                                                  "socketStatus":  "reconnecting",
+                                                  "pageErrors":  [
+
+                                                                 ]
+                                              }
+                     },
+    "errors":  {
+                   "console":  0,
+                   "page":  0,
+                   "failed_requests":  0,
+                   "http":  0
+               },
+    "warnings":  [
+                     "[http://127.0.0.1:5173/] WebSocket connection to \u0027ws://127.0.0.1:8010/ws/simulation\u0027 failed: WebSocket is closed before the connection is established.",
+                     "[http://127.0.0.1:5173/microgrid] WebSocket connection to \u0027ws://127.0.0.1:8010/ws/simulation\u0027 failed: WebSocket is closed before the connection is established.",
+                     "[http://127.0.0.1:5173/marketplace] WebSocket connection to \u0027ws://127.0.0.1:8010/ws/simulation\u0027 failed: WebSocket is closed before the connection is established.",
+                     "[http://127.0.0.1:5173/forecasting] WebSocket connection to \u0027ws://127.0.0.1:8010/ws/simulation\u0027 failed: WebSocket is closed before the connection is established.",
+                     "[http://127.0.0.1:5173/optimization] WebSocket connection to \u0027ws://127.0.0.1:8010/ws/simulation\u0027 failed: WebSocket is closed before the connection is established.",
+                     "[http://127.0.0.1:5173/evaluation] WebSocket connection to \u0027ws://127.0.0.1:8010/ws/simulation\u0027 failed: WebSocket is closed before the connection is established.",
+                     "[http://127.0.0.1:5173/transactions] WebSocket connection to \u0027ws://127.0.0.1:8010/ws/simulation\u0027 failed: WebSocket is closed before the connection is established.",
+                     "[http://127.0.0.1:5173/settings] WebSocket connection to \u0027ws://127.0.0.1:8010/ws/simulation\u0027 failed: WebSocket is closed before the connection is established.",
+                     "[http://127.0.0.1:5173/] WebSocket connection to \u0027ws://127.0.0.1:8010/ws/simulation\u0027 failed: WebSocket is closed before the connection is established.",
+                     "[http://127.0.0.1:5173/microgrid] WebSocket connection to \u0027ws://127.0.0.1:8010/ws/simulation\u0027 failed: WebSocket is closed before the connection is established.",
+                     "[http://127.0.0.1:5173/forecasting] WebSocket connection to \u0027ws://127.0.0.1:8010/ws/simulation\u0027 failed: WebSocket is closed before the connection is established.",
+                     "[http://127.0.0.1:5173/marketplace] WebSocket connection to \u0027ws://127.0.0.1:8010/ws/simulation\u0027 failed: WebSocket is closed before the connection is established.",
+                     "[http://127.0.0.1:5173/optimization] WebSocket connection to \u0027ws://127.0.0.1:8010/ws/simulation\u0027 failed: WebSocket is closed before the connection is established.",
+                     "[http://127.0.0.1:5173/transactions] WebSocket connection to \u0027ws://127.0.0.1:8010/ws/simulation\u0027 failed: WebSocket is closed before the connection is established.",
+                     "[http://127.0.0.1:5173/evaluation] WebSocket connection to \u0027ws://127.0.0.1:8010/ws/simulation\u0027 failed: WebSocket is closed before the connection is established.",
+                     "[http://127.0.0.1:5173/settings] WebSocket connection to \u0027ws://127.0.0.1:8010/ws/simulation\u0027 failed: WebSocket is closed before the connection is established.",
+                     "[http://127.0.0.1:5173/settings] WebSocket connection to \u0027ws://127.0.0.1:8010/ws/simulation\u0027 failed: WebSocket is closed before the connection is established."
+                 ]
+}

@@ -1,0 +1,30 @@
+# Dependencies
+node_modules/
+backend/.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# Builds
+dist/
+coverage/
+*.tsbuildinfo
+
+# Local configuration and secrets
+.env
+.env.local
+.env.*.local
+backend/.env
+
+# Runtime data
+backend/data/
+*.db
+*.db-shm
+*.db-wal
+*.log
+
+# Editor / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
