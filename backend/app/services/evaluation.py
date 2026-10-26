@@ -376,7 +376,11 @@ async def run_evaluation(db: Session, *, ticks: int, cloud_cover_pct: float) -> 
         start = utcnow().replace(second=0, microsecond=0)
         weather_basis = "current_observation_held_constant"
 
-    households = db.scalars(select(Household).order_by(Household.id)).all()
+    households = db.scalars(
+        select(Household)
+        .where(Household.owner_user_id.is_(None))
+        .order_by(Household.id)
+    ).all()
     static_metrics, dynamic_metrics, series = compare_strategies(
         households=households,
         config=config,

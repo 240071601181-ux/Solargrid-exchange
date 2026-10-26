@@ -124,6 +124,7 @@ export interface Transaction {
   price_inr_kwh: number;
   total_value_inr: number;
   status: string;
+  source?: string;
   created_at?: string | null;
   executed_at?: string | null;
 }
@@ -386,4 +387,281 @@ export interface ServerEvent {
   type: string;
   seq: number;
   data?: Record<string, unknown>;
+}
+
+export type AuthRole = "admin" | "seller" | "buyer";
+export type AccountRole = "seller" | "buyer";
+export type OfferStatus = "active" | "paused" | "cancelled" | "exhausted";
+
+export interface AuthUser {
+  id: number;
+  full_name: string;
+  email: string;
+  role: AuthRole;
+  status: string;
+  created_at?: string | null;
+}
+
+export interface AuthResponse {
+  user: AuthUser;
+  csrf_token: string;
+}
+
+export interface SessionResponse {
+  user: AuthUser | null;
+  csrf_token: string;
+}
+
+export interface SellerProfile {
+  user_id: number;
+  display_name: string;
+  location_name: string;
+  latitude: number;
+  longitude: number;
+  solar_capacity_kw: number;
+  has_battery: boolean;
+  battery_capacity_kwh: number;
+  household_category: string;
+  demand_base_kw: number;
+  household_id: string;
+  updated_at?: string | null;
+}
+
+export interface BuyerProfile {
+  user_id: number;
+  display_name: string;
+  location_name: string;
+  latitude: number;
+  longitude: number;
+  household_category: string;
+  demand_base_kw: number;
+  household_id: string;
+  updated_at?: string | null;
+}
+
+export interface ProfilePatch {
+  display_name?: string;
+  location_name?: string;
+  latitude?: number;
+  longitude?: number;
+  solar_capacity_kw?: number;
+  has_battery?: boolean;
+  battery_capacity_kwh?: number;
+  household_category?: string;
+  demand_base_kw?: number;
+}
+
+export interface EnergyOffer {
+  id: number;
+  seller_user_id: number;
+  seller_display_name: string;
+  location_name: string;
+  quantity_kwh: number;
+  remaining_kwh: number;
+  sold_kwh: number;
+  price_inr_kwh: number;
+  estimated_total_inr: number;
+  status: OfferStatus;
+  note: string;
+  created_at?: string | null;
+  updated_at?: string | null;
+}
+
+export interface OfferList {
+  items: EnergyOffer[];
+  count: number;
+}
+
+export interface OfferAvailability {
+  available_to_offer_kwh: number;
+  daily_surplus_kwh: number;
+  reserved_offer_kwh: number;
+  forecast_freshness: string;
+  has_forecast: boolean;
+}
+
+export interface OfferCreate {
+  quantity_kwh: number;
+  price_inr_kwh: number;
+  note?: string;
+}
+
+export interface OfferUpdate {
+  quantity_kwh?: number;
+  price_inr_kwh?: number;
+  note?: string;
+}
+
+export interface PurchaseOrder {
+  id: number;
+  offer_id: number;
+  buyer_user_id: number;
+  seller_user_id: number;
+  buyer_display_name: string;
+  seller_display_name: string;
+  quantity_kwh: number;
+  price_inr_kwh: number;
+  total_value_inr: number;
+  status: string;
+  offer_status?: string | null;
+  transaction_id?: number | null;
+  created_at?: string | null;
+}
+
+export interface PurchaseList {
+  items: PurchaseOrder[];
+  count: number;
+}
+
+export interface PurchaseCreate {
+  offer_id: number;
+  quantity_kwh: number;
+}
+
+export interface MarketDemand {
+  registered_buyers: number;
+  total_baseline_demand_kw: number;
+  active_offers: number;
+  privacy_note: string;
+}
+
+export interface Earnings {
+  energy_sold_kwh: number;
+  simulated_sales_value_inr: number;
+  average_realized_price_inr_kwh: number | null;
+  completed_sales: number;
+  recent_sales: PurchaseOrder[];
+  daily_series: Array<{ date: string; energy_kwh: number; value_inr: number; sales: number }>;
+}
+
+export interface Spending {
+  energy_purchased_kwh: number;
+  simulated_spend_inr: number;
+  average_purchase_price_inr_kwh: number | null;
+  completed_purchases: number;
+  recent_purchases: PurchaseOrder[];
+  daily_series: Array<{ date: string; energy_kwh: number; value_inr: number; purchases: number }>;
+}
+
+export interface AccountForecastPoint {
+  timestamp: string;
+  kind: string;
+  generation_kw: number;
+  demand_kw: number;
+  imbalance_kw: number;
+  irradiance_w_m2: number | null;
+  cloud_cover_pct: number | null;
+  temperature_c: number | null;
+  demand_basis: string;
+}
+
+export interface AccountEnergy {
+  household: {
+    id: string;
+    display_name: string;
+    category: string;
+    solar_capacity_kw: number;
+    has_battery: boolean;
+    battery_capacity_kwh: number;
+    battery_soc_kwh: number;
+    battery_soc_pct: number | null;
+    location_name: string;
+    demand_base_kw: number;
+  };
+  current: {
+    generation_kw: number | null;
+    demand_kw: number | null;
+    net_kw: number;
+    surplus_kw: number;
+    deficit_kw: number;
+    estimated_at: string;
+  };
+  daily: {
+    generation_kwh: number;
+    demand_kwh: number;
+    surplus_kwh: number;
+    deficit_kwh: number;
+    reserved_offer_kwh: number;
+    available_to_offer_kwh: number;
+  };
+  forecast: {
+    provider: string;
+    transport: string;
+    mcp_server: string;
+    freshness: string;
+    generated_at: string | null;
+    error: string | null;
+    horizon_hours: number;
+    series: AccountForecastPoint[];
+  };
+  weather: WeatherCurrent | null;
+  weather_error: string | null;
+  assumptions: string[];
+}
+
+export interface SellerDashboard {
+  profile: SellerProfile;
+  energy: AccountEnergy;
+  offers: EnergyOffer[];
+  today: {
+    energy_sold_today_kwh: number;
+    simulated_value_today_inr: number;
+    sales_today: number;
+  };
+  earnings: Earnings;
+  market_demand: MarketDemand;
+  pricing: Pricing;
+  assumptions: string[];
+}
+
+export interface BuyerDashboard {
+  profile: BuyerProfile;
+  energy: AccountEnergy;
+  available_offers: EnergyOffer[];
+  spending: Spending;
+  pricing: Pricing;
+  assumptions: string[];
+}
+
+export interface BuyerUsage {
+  profile: BuyerProfile;
+  energy: AccountEnergy;
+  spending: Spending;
+}
+
+export interface BuyerPricePoint {
+  timestamp: string;
+  generation_kw: number;
+  demand_kw: number;
+  price_inr_kwh: number;
+  cloud_cover_pct: number | null;
+  irradiance_w_m2: number | null;
+  demand_basis: string | null;
+}
+
+export interface BuyerPrices {
+  current: Pricing;
+  history: Array<{
+    tick: number;
+    simulated_at: string;
+    price_inr_kwh: number;
+    base_price_inr_kwh: number;
+    imbalance: number;
+    supply_kw: number;
+    demand_kw: number;
+    cloud_cover_pct: number | null;
+    irradiance_w_m2: number | null;
+    reason: string;
+  }>;
+  forecast: BuyerPricePoint[];
+  weather: WeatherCurrent | null;
+  freshness: string;
+  assumptions: string[];
+}
+
+export interface SharedStatus {
+  state: SimulationState;
+  weather: WeatherCurrent | null;
+  pricing: Pricing;
+  shared_note: string;
 }

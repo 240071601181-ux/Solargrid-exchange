@@ -100,7 +100,10 @@ async def _execute(db: Session, run_id: int) -> dict:  # type: ignore[type-arg]
 @router.get("/runs", response_model=list[AllocationOut])
 def list_runs(limit: int = 10, db: Session = Depends(get_db)) -> list[dict]:  # type: ignore[type-arg]
     runs = db.scalars(
-        select(AllocationRun).order_by(AllocationRun.id.desc()).limit(max(1, min(limit, 50)))
+        select(AllocationRun)
+        .where(AllocationRun.source == "simulation")
+        .order_by(AllocationRun.id.desc())
+        .limit(max(1, min(limit, 50)))
     ).all()
     payloads = [allocation_payload(db, run) for run in runs]
     return [payload for payload in payloads if payload is not None]
@@ -108,7 +111,11 @@ def list_runs(limit: int = 10, db: Session = Depends(get_db)) -> list[dict]:  # 
 
 @router.get("/stats", response_model=dict)
 def optimization_stats(db: Session = Depends(get_db)) -> dict:  # type: ignore[type-arg]
-    count = db.scalar(select(func.count()).select_from(AllocationRun)) or 0
+    count = db.scalar(
+        select(func.count())
+        .select_from(AllocationRun)
+        .where(AllocationRun.source == "simulation")
+    ) or 0
     latest = latest_run(db)
     return {
         "runs": count,

@@ -6,19 +6,22 @@ function jsonResponse(payload: unknown, status = 200): Response {
     ok: status >= 200 && status < 300,
     status,
     json: async () => payload,
-  } as Response;
+    clone: () => jsonResponse(payload, status),
+  } as unknown as Response;
 }
 
 afterEach(() => {
   vi.unstubAllGlobals();
+  document.cookie = "sg_csrf=; Max-Age=0; path=/";
 });
 
 describe("API client", () => {
-  it("is configured for the backend", () => {
-    expect(API_BASE_URL).toBe("http://127.0.0.1:8010/api/v1");
+  it("is configured for the same-origin API", () => {
+    expect(API_BASE_URL).toBe("/api/v1");
   });
 
-  it("builds query strings, skips empty values and posts JSON", async () => {
+  it("builds query strings, skips empty values and posts JSON with credentials and CSRF", async () => {
+    document.cookie = "sg_csrf=test-token; path=/";
     const fetchMock = vi.fn(async () => jsonResponse({ id: 7 }));
     vi.stubGlobal("fetch", fetchMock);
 
@@ -31,10 +34,67 @@ describe("API client", () => {
     expect(result).toEqual({ id: 7 });
     expect(fetchMock).toHaveBeenCalledTimes(1);
     const [url, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
-    expect(url).toBe("http://127.0.0.1:8010/api/v1/optimization/run?page=2&flag=false");
+    expect(url).toBe("/api/v1/optimization/run?page=2&flag=false");
     expect(init.method).toBe("POST");
+    expect(init.credentials).toBe("include");
     expect(init.body).toBe(JSON.stringify({ ticks: 24 }));
     expect((init.headers as Record<string, string>)["Content-Type"]).toBe("application/json");
+    expect((init.headers as Record<string, string>)["X-CSRF-Token"]).toBe("test-token");
+  });
+
+  it("retrieves a CSRF token before an unsafe request when the cookie is absent", async () => {
+    const fetchMock = vi.fn(async (input: string | URL | Request) => {
+      const url = String(input);
+      if (url.endsWith("/auth/csrf")) return jsonResponse({ csrf_token: "fresh-token" });
+      return jsonResponse({ ok: true });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    await request("/auth/login", { method: "POST", body: { email: "a@b.com", password: "Password123" } });
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    const [mainUrl, mainInit] = fetchMock.mock.calls[1] as unknown as [string, RequestInit];
+    expect(mainUrl).toBe("/api/v1/auth/login");
+    expect((mainInit.headers as Record<string, string>)["X-CSRF-Token"]).toBe("fresh-token");
+  });
+
+  it("refreshes a rejected CSRF token once and retries the request", async () => {
+    document.cookie = "sg_csrf=stale-token; path=/";
+    const fetchMock = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+      const url = String(input);
+      if (url.endsWith("/auth/csrf")) return jsonResponse({ csrf_token: "fresh-token" });
+      const headers = (init?.headers ?? {}) as Record<string, string>;
+      if (headers["X-CSRF-Token"] === "stale-token") {
+        return jsonResponse({ detail: "CSRF validation failed." }, 403);
+      }
+      return jsonResponse({ ok: true });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(
+      request("/auth/logout", { method: "POST" }),
+    ).resolves.toEqual({ ok: true });
+
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+    const [csrfUrl] = fetchMock.mock.calls[1] as unknown as [string, RequestInit];
+    expect(csrfUrl).toBe("/api/v1/auth/csrf");
+    const [retryUrl, retryInit] = fetchMock.mock.calls[2] as unknown as [string, RequestInit];
+    expect(retryUrl).toBe("/api/v1/auth/logout");
+    expect((retryInit.headers as Record<string, string>)["X-CSRF-Token"]).toBe("fresh-token");
+  });
+
+  it("does not refresh a normal authorization 403", async () => {
+    document.cookie = "sg_csrf=valid-token; path=/";
+    const fetchMock = vi.fn(async () =>
+      jsonResponse({ detail: "You do not have permission to access this resource." }, 403),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(request("/settings", { method: "PATCH", body: {} })).rejects.toMatchObject({
+      status: 403,
+      detail: "You do not have permission to access this resource.",
+    });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
   it("parses a string error detail into ApiError", async () => {

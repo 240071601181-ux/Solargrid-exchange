@@ -48,6 +48,21 @@ class Settings(BaseSettings):
     max_trade_kw_per_household: float = 4.0
     battery_max_rate_ratio: float = 0.5
 
+    # Authentication / sessions. In production set SESSION_COOKIE_SECURE=true and
+    # provision administrator credentials through the environment or admin_cli.
+    session_cookie_name: str = "sg_session"
+    csrf_cookie_name: str = "sg_csrf"
+    session_ttl_hours: int = 12
+    session_cookie_secure: bool = False
+    session_cookie_samesite: str = "lax"
+    login_rate_limit_attempts: int = 8
+    login_rate_limit_window_seconds: int = 600
+    registration_rate_limit_attempts: int = 10
+    registration_rate_limit_window_seconds: int = 3600
+    bootstrap_admin_email: str | None = None
+    bootstrap_admin_password: str | None = None
+    bootstrap_admin_name: str = "SolarGrid Operator"
+
     model_config = SettingsConfigDict(
         env_file=(str(ROOT_DIR / ".env"), str(BASE_DIR / ".env")),
         env_prefix="",

@@ -96,7 +96,9 @@ def ensure_defaults(db: Session) -> None:
             )
         )
 
-    household_count = db.scalar(select(func.count()).select_from(Household)) or 0
+    household_count = db.scalar(
+        select(func.count()).select_from(Household).where(Household.owner_user_id.is_(None))
+    ) or 0
     if household_count == 0:
         for household_id, name, role, capacity, orientation, demand, battery, reservation in DEFAULT_HOUSEHOLDS:
             max_rate = round(battery * 0.05, 2)
@@ -154,7 +156,12 @@ def latest_tick(db: Session) -> TickSnapshot | None:
 
 
 def latest_run(db: Session) -> AllocationRun | None:
-    return db.scalars(select(AllocationRun).order_by(desc(AllocationRun.id)).limit(1)).first()
+    return db.scalars(
+        select(AllocationRun)
+        .where(AllocationRun.source == "simulation")
+        .order_by(desc(AllocationRun.id))
+        .limit(1)
+    ).first()
 
 
 def _local_hour(moment: datetime) -> int:
@@ -194,7 +201,11 @@ async def advance_simulation(db: Session, *, force_weather: bool = False, broadc
         ambient = weather.snapshot.temperature_c
 
         computations: list[HouseholdComputation] = []
-        for household in db.scalars(select(Household).order_by(Household.id)).all():
+        for household in db.scalars(
+            select(Household)
+            .where(Household.owner_user_id.is_(None))
+            .order_by(Household.id)
+        ).all():
             generation = estimate_generation_kw(
                 household.solar_capacity_kw,
                 scenario_irradiance,
@@ -340,6 +351,7 @@ async def advance_simulation(db: Session, *, force_weather: bool = False, broadc
             price_inr_kwh=price.price_inr_kwh,
             interval_seconds=interval,
             notes=notes,
+            source="simulation",
         )
         db.add(run)
         db.flush()
@@ -446,6 +458,7 @@ def execute_allocation_run(db: Session, run_id: int) -> list[Transaction]:
             price_inr_kwh=run.price_inr_kwh,
             total_value_inr=round(total_value, 4),
             status="executed",
+            source="simulation",
             executed_at=utcnow(),
         )
         db.add(transaction)
@@ -492,6 +505,7 @@ def run_optimization_for_latest_tick(db: Session) -> AllocationRun:
             f"{runtime.max_trade_kw_per_household:.1f} kW household trade limit. "
             "Proposed trades are not executed until confirmed."
         ),
+        source="simulation",
     )
     db.add(run)
     db.flush()
@@ -511,15 +525,23 @@ def run_optimization_for_latest_tick(db: Session) -> AllocationRun:
 
 def reset_simulation(db: Session) -> SimulationState:
     state = get_state(db)
-    db.execute(delete(Transaction))
-    run_ids = list(db.scalars(select(AllocationRun.id)).all())
+    # Administrators reset the seeded control-room simulation only. Marketplace
+    # purchases are user-owned ledger records and must survive an operational reset.
+    db.execute(delete(Transaction).where(Transaction.source == "simulation"))
+    run_ids = list(
+        db.scalars(
+            select(AllocationRun.id).where(AllocationRun.source == "simulation")
+        ).all()
+    )
     if run_ids:
         db.execute(delete(AllocationItem).where(AllocationItem.run_id.in_(run_ids)))
-    db.execute(delete(AllocationRun))
+    db.execute(delete(AllocationRun).where(AllocationRun.source == "simulation"))
     db.execute(delete(HouseholdSnapshot))
     db.execute(delete(TickSnapshot))
     db.execute(delete(EvaluationRun))
-    for household in db.scalars(select(Household)).all():
+    for household in db.scalars(
+        select(Household).where(Household.owner_user_id.is_(None))
+    ).all():
         household.battery_soc_kwh = round(household.battery_capacity_kwh * 0.55, 2)
     state.status = "idle"
     state.tick = 0
@@ -539,7 +561,11 @@ def _household_payload(db: Session, state: SimulationState) -> list[dict[str, An
         .order_by(HouseholdSnapshot.household_id)
     ).all()
     by_id = {row.household_id: row for row in rows}
-    households = db.scalars(select(Household).order_by(Household.id)).all()
+    households = db.scalars(
+        select(Household)
+        .where(Household.owner_user_id.is_(None))
+        .order_by(Household.id)
+    ).all()
     payload: list[dict[str, Any]] = []
     for household in households:
         row = by_id.get(household.id)
@@ -649,12 +675,16 @@ def simulation_payload(db: Session, weather_payload: dict[str, Any] | None = Non
     allocation = allocation_payload(db)
     transactions = db.scalars(
         select(Transaction)
-        .where(Transaction.status == "executed")
+        .where(Transaction.status == "executed", Transaction.source == "simulation")
         .order_by(desc(Transaction.executed_at), desc(Transaction.id))
         .limit(6)
     ).all()
     names = {household.id: household.name for household in db.scalars(select(Household)).all()}
-    total_traded = db.scalar(select(func.coalesce(func.sum(Transaction.energy_kwh), 0.0))) or 0.0
+    total_traded = db.scalar(
+        select(func.coalesce(func.sum(Transaction.energy_kwh), 0.0)).where(
+            Transaction.source == "simulation"
+        )
+    ) or 0.0
     recent = [
         {
             "id": transaction.id,
@@ -668,6 +698,7 @@ def simulation_payload(db: Session, weather_payload: dict[str, Any] | None = Non
             "price_inr_kwh": transaction.price_inr_kwh,
             "total_value_inr": transaction.total_value_inr,
             "status": transaction.status,
+            "source": transaction.source or "simulation",
             "created_at": iso(transaction.created_at),
             "executed_at": iso(transaction.executed_at),
             "run_id": transaction.run_id,
@@ -677,7 +708,11 @@ def simulation_payload(db: Session, weather_payload: dict[str, Any] | None = Non
     active_transactions = db.scalar(
         select(func.count())
         .select_from(Transaction)
-        .where(Transaction.status == "executed", Transaction.run_id == (allocation or {}).get("id", -1))
+        .where(
+            Transaction.status == "executed",
+            Transaction.source == "simulation",
+            Transaction.run_id == (allocation or {}).get("id", -1),
+        )
     ) or 0
 
     return {
@@ -755,6 +790,7 @@ def transaction_payload(transaction: Transaction, names: dict[str, str]) -> dict
         "price_inr_kwh": transaction.price_inr_kwh,
         "total_value_inr": transaction.total_value_inr,
         "status": transaction.status,
+        "source": transaction.source or "simulation",
         "created_at": iso(transaction.created_at),
         "executed_at": iso(transaction.executed_at),
     }

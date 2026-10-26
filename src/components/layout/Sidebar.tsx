@@ -1,14 +1,26 @@
 import { SunMedium, X } from "lucide-react";
 import { NavLink } from "react-router";
-import { NAV_GROUPS } from "./nav";
-import { useSimulation } from "../../hooks/queries";
+import { NAV_GROUPS, roleLabel, type NavGroup } from "./nav";
+import { useSharedStatus } from "../../hooks/queries";
 import { useSimulationSocket } from "../../hooks/useSimulationSocket";
+import { useAuth } from "../../context/AuthProvider";
 import { cn } from "../../utils/cn";
 import { ConnectionPill } from "../common/ConnectionPill";
 
-function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
-  const { data } = useSimulation();
+type Role = "admin" | "seller" | "buyer";
+
+function SidebarContent({
+  onNavigate,
+  groups,
+  role,
+}: {
+  onNavigate?: () => void;
+  groups: NavGroup[];
+  role: Role;
+}) {
+  const { data } = useSharedStatus();
   const { status } = useSimulationSocket();
+  const { user } = useAuth();
   const weather = data?.weather;
 
   return (
@@ -19,14 +31,12 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
         </span>
         <div className="min-w-0">
           <p className="truncate text-[13px] font-semibold tracking-[-0.01em] text-white">SolarGrid Exchange</p>
-          <p className="text-[10px] font-medium uppercase tracking-[0.12em] text-slate-500">
-            P2P microgrid control
-          </p>
+          <p className="text-[10px] font-medium uppercase tracking-[0.12em] text-slate-500">{roleLabel(role)}</p>
         </div>
       </div>
 
       <nav aria-label="Primary" className="flex-1 overflow-y-auto px-3 pb-4 pt-3">
-        {NAV_GROUPS.map((group) => (
+        {groups.map((group) => (
           <div key={group.label} className="mb-5">
             <p className="px-2.5 pb-1.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
               {group.label}
@@ -72,6 +82,17 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
       </nav>
 
       <div className="border-t border-white/[0.07] px-4 py-3.5">
+        {user ? (
+          <div className="mb-3 flex items-center gap-2.5">
+            <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-white/[0.08] text-[10px] font-semibold uppercase text-slate-200">
+              {user.full_name.slice(0, 2)}
+            </span>
+            <div className="min-w-0">
+              <p className="truncate text-[11.5px] font-medium text-slate-200">{user.full_name}</p>
+              <p className="truncate text-[10px] capitalize text-slate-500">{user.role} account</p>
+            </div>
+          </div>
+        ) : null}
         <div className="flex items-center justify-between gap-2">
           <p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-slate-500">Data link</p>
           <ConnectionPill compact />
@@ -103,15 +124,31 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
   );
 }
 
-export function Sidebar() {
+export function Sidebar({
+  groups = NAV_GROUPS,
+  role = "admin",
+}: {
+  groups?: NavGroup[];
+  role?: Role;
+}) {
   return (
     <aside className="fixed inset-y-0 left-0 z-40 hidden w-60 border-r border-ink-700/60 bg-ink-900 lg:block">
-      <SidebarContent />
+      <SidebarContent groups={groups} role={role} />
     </aside>
   );
 }
 
-export function MobileSidebar({ open, onClose }: { open: boolean; onClose: () => void }) {
+export function MobileSidebar({
+  open,
+  onClose,
+  groups = NAV_GROUPS,
+  role = "admin",
+}: {
+  open: boolean;
+  onClose: () => void;
+  groups?: NavGroup[];
+  role?: Role;
+}) {
   if (!open) return null;
   return (
     <div className="fixed inset-0 z-50 lg:hidden" role="presentation">
@@ -130,7 +167,7 @@ export function MobileSidebar({ open, onClose }: { open: boolean; onClose: () =>
         >
           <X className="size-4" aria-hidden="true" />
         </button>
-        <SidebarContent onNavigate={onClose} />
+        <SidebarContent onNavigate={onClose} groups={groups} role={role} />
       </div>
     </div>
   );

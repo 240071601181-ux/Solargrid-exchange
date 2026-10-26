@@ -1,0 +1,169 @@
+{
+  "results": [
+    {
+      "status": "PASS",
+      "message": "anonymous protected route redirected to /login with next path"
+    },
+    {
+      "status": "PASS",
+      "message": "login form rendered"
+    },
+    {
+      "status": "PASS",
+      "message": "signed in seller@solargrid.local and redirected to /seller"
+    },
+    {
+      "status": "PASS",
+      "message": "session cookie HttpOnly=true SameSite=Lax Secure=false; CSRF cookie readable"
+    },
+    {
+      "status": "PASS",
+      "message": "HttpOnly session cookie is not visible to document.cookie"
+    },
+    {
+      "status": "PASS",
+      "message": "no authentication material stored in localStorage or sessionStorage"
+    },
+    {
+      "status": "PASS",
+      "message": "session restoration showed the loading gate with no private-content flash"
+    },
+    {
+      "status": "PASS",
+      "message": "seller dashboard shows MCP/Open-Meteo weather provenance"
+    },
+    {
+      "status": "PASS",
+      "message": "/seller/solar rendered \"My solar system\""
+    },
+    {
+      "status": "PASS",
+      "message": "/seller/offers rendered \"My offers\""
+    },
+    {
+      "status": "PASS",
+      "message": "created an offer through the seller UI"
+    },
+    {
+      "status": "PASS",
+      "message": "paused the UI-created offer"
+    },
+    {
+      "status": "PASS",
+      "message": "resumed the UI-created offer"
+    },
+    {
+      "status": "PASS",
+      "message": "cancelled the UI-created offer after explicit confirmation"
+    },
+    {
+      "status": "PASS",
+      "message": "/seller/marketplace rendered \"Marketplace demand\""
+    },
+    {
+      "status": "PASS",
+      "message": "/seller/sales rendered \"My sales\""
+    },
+    {
+      "status": "PASS",
+      "message": "/seller/earnings rendered \"Earnings\""
+    },
+    {
+      "status": "PASS",
+      "message": "/seller/forecasting rendered \"Forecasting\""
+    },
+    {
+      "status": "PASS",
+      "message": "/seller/settings rendered \"Profile & settings\""
+    },
+    {
+      "status": "PASS",
+      "message": "signed out from /seller to /login"
+    },
+    {
+      "status": "PASS",
+      "message": "signed in buyer@solargrid.local and redirected to /buyer"
+    },
+    {
+      "status": "PASS",
+      "message": "/buyer/marketplace rendered \"Browse energy offers\""
+    },
+    {
+      "status": "PASS",
+      "message": "completed a confirmed buyer purchase through the UI"
+    },
+    {
+      "status": "PASS",
+      "message": "/buyer/purchases rendered \"My purchases\""
+    },
+    {
+      "status": "PASS",
+      "message": "buyer purchase ledger shows completed marketplace records"
+    },
+    {
+      "status": "PASS",
+      "message": "/buyer/usage rendered \"Usage & demand\""
+    },
+    {
+      "status": "PASS",
+      "message": "/buyer/prices rendered \"Price outlook\""
+    },
+    {
+      "status": "PASS",
+      "message": "/buyer/settings rendered \"Profile & settings\""
+    },
+    {
+      "status": "PASS",
+      "message": "buyer visiting a seller URL received the restricted-workspace guard"
+    },
+    {
+      "status": "PASS",
+      "message": "buyer session restored after reload"
+    },
+    {
+      "status": "PASS",
+      "message": "buyer marketplace has no horizontal overflow at 390px"
+    },
+    {
+      "status": "PASS",
+      "message": "mobile navigation opens and exposes buyer links"
+    },
+    {
+      "status": "PASS",
+      "message": "missing/expired session redirected the protected route to /login"
+    },
+    {
+      "status": "PASS",
+      "message": "signed in admin@solargrid.local and redirected to /"
+    },
+    {
+      "status": "PASS",
+      "message": "/microgrid rendered \"Microgrid network\""
+    },
+    {
+      "status": "PASS",
+      "message": "/optimization rendered \"Allocation optimization\""
+    },
+    {
+      "status": "PASS",
+      "message": "/transactions rendered \"Transactions\""
+    },
+    {
+      "status": "PASS",
+      "message": "admin visiting a seller URL received the restricted-workspace guard"
+    },
+    {
+      "status": "PASS",
+      "message": "admin control room remains available"
+    },
+    {
+      "status": "PASS",
+      "message": "signed out from / to /login"
+    }
+  ],
+  "consoleErrors": [],
+  "pageErrors": [],
+  "serverErrors": [],
+  "passed": 40,
+  "failed": 0
+}

@@ -60,7 +60,11 @@ async def build_forecast(db: Session, hours: int) -> dict[str, Any]:
             "series": [],
         }
 
-    households = db.scalars(select(Household).order_by(Household.id)).all()
+    households = db.scalars(
+        select(Household)
+        .where(Household.owner_user_id.is_(None))
+        .order_by(Household.id)
+    ).all()
     base_price = config.base_price_inr_kwh if config else 6.0
     historical = _historical_demand_factor(db)
     total_base_demand = sum(h.demand_base_kw for h in households)

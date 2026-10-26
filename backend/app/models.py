@@ -77,6 +77,10 @@ class Household(Base):
     battery_soc_kwh: Mapped[float] = mapped_column(Float, default=0.0)
     battery_max_rate_kw: Mapped[float] = mapped_column(Float, default=0.0)
     reservation_price_ratio: Mapped[float] = mapped_column(Float, default=1.0)
+    # Account-owned households are excluded from the seeded microgrid simulation.
+    owner_user_id: Mapped[int | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"), nullable=True, unique=True, index=True
+    )
     created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow)
 
 
@@ -182,6 +186,7 @@ class AllocationRun(Base):
     price_inr_kwh: Mapped[float] = mapped_column(Float, default=0.0)
     interval_seconds: Mapped[int] = mapped_column(Integer, default=300)
     notes: Mapped[str] = mapped_column(Text, default="")
+    source: Mapped[str] = mapped_column(String(30), default="simulation", index=True)
     created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow)
     executed_at: Mapped[datetime | None] = mapped_column(UTCDateTime, nullable=True)
 
@@ -219,6 +224,7 @@ class Transaction(Base):
     price_inr_kwh: Mapped[float] = mapped_column(Float)
     total_value_inr: Mapped[float] = mapped_column(Float)
     status: Mapped[str] = mapped_column(String(20), default="executed")
+    source: Mapped[str] = mapped_column(String(30), default="simulation", index=True)
     created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow)
     executed_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow)
 
@@ -240,3 +246,133 @@ class EvaluationRun(Base):
     series: Mapped[list[dict[str, Any]]] = mapped_column(JSON)
     notes: Mapped[str] = mapped_column(Text, default="")
     created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow)
+
+
+class User(Base):
+    __tablename__ = "users"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    full_name: Mapped[str] = mapped_column(String(120), nullable=False)
+    email: Mapped[str] = mapped_column(String(320), nullable=False, unique=True, index=True)
+    password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
+    role: Mapped[str] = mapped_column(String(20), nullable=False, index=True)
+    status: Mapped[str] = mapped_column(String(20), default="active", nullable=False)
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow, onupdate=utcnow)
+
+
+class UserSession(Base):
+    __tablename__ = "user_sessions"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    token_hash: Mapped[str] = mapped_column(String(64), nullable=False, unique=True, index=True)
+    csrf_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow)
+    last_seen_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow)
+    expires_at: Mapped[datetime] = mapped_column(UTCDateTime, nullable=False, index=True)
+    revoked_at: Mapped[datetime | None] = mapped_column(UTCDateTime, nullable=True)
+    user_agent: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    ip_address: Mapped[str | None] = mapped_column(String(64), nullable=True)
+
+    user: Mapped[User] = relationship()
+
+
+class SellerProfile(Base):
+    __tablename__ = "seller_profiles"
+
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), primary_key=True
+    )
+    display_name: Mapped[str] = mapped_column(String(80), nullable=False)
+    location_name: Mapped[str] = mapped_column(String(120), nullable=False)
+    latitude: Mapped[float] = mapped_column(Float, nullable=False)
+    longitude: Mapped[float] = mapped_column(Float, nullable=False)
+    solar_capacity_kw: Mapped[float] = mapped_column(Float, default=0.0, nullable=False)
+    has_battery: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    battery_capacity_kwh: Mapped[float] = mapped_column(Float, default=0.0, nullable=False)
+    household_category: Mapped[str] = mapped_column(String(60), default="residential", nullable=False)
+    demand_base_kw: Mapped[float] = mapped_column(Float, default=0.9, nullable=False)
+    household_id: Mapped[str] = mapped_column(
+        ForeignKey("households.id", ondelete="RESTRICT"), nullable=False, unique=True
+    )
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow, onupdate=utcnow)
+
+    user: Mapped[User] = relationship()
+    household: Mapped[Household] = relationship()
+
+
+class BuyerProfile(Base):
+    __tablename__ = "buyer_profiles"
+
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), primary_key=True
+    )
+    display_name: Mapped[str] = mapped_column(String(80), nullable=False)
+    location_name: Mapped[str] = mapped_column(String(120), nullable=False)
+    latitude: Mapped[float] = mapped_column(Float, nullable=False)
+    longitude: Mapped[float] = mapped_column(Float, nullable=False)
+    household_category: Mapped[str] = mapped_column(String(60), default="residential", nullable=False)
+    demand_base_kw: Mapped[float] = mapped_column(Float, default=0.9, nullable=False)
+    household_id: Mapped[str] = mapped_column(
+        ForeignKey("households.id", ondelete="RESTRICT"), nullable=False, unique=True
+    )
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow, onupdate=utcnow)
+
+    user: Mapped[User] = relationship()
+    household: Mapped[Household] = relationship()
+
+
+class EnergyOffer(Base):
+    __tablename__ = "energy_offers"
+    __table_args__ = (
+        UniqueConstraint("id", "seller_user_id", name="uq_offer_owner"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    seller_user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    seller_household_id: Mapped[str] = mapped_column(
+        ForeignKey("households.id", ondelete="RESTRICT"), nullable=False
+    )
+    quantity_kwh: Mapped[float] = mapped_column(Float, nullable=False)
+    remaining_kwh: Mapped[float] = mapped_column(Float, nullable=False)
+    price_inr_kwh: Mapped[float] = mapped_column(Float, nullable=False)
+    status: Mapped[str] = mapped_column(String(20), default="active", nullable=False, index=True)
+    note: Mapped[str] = mapped_column(String(280), default="", nullable=False)
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow, onupdate=utcnow)
+
+    seller: Mapped[User] = relationship()
+
+
+class PurchaseOrder(Base):
+    __tablename__ = "purchase_orders"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    buyer_user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    seller_user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    offer_id: Mapped[int] = mapped_column(
+        ForeignKey("energy_offers.id", ondelete="RESTRICT"), nullable=False, index=True
+    )
+    transaction_id: Mapped[int | None] = mapped_column(
+        ForeignKey("transactions.id", ondelete="SET NULL"), nullable=True, unique=True
+    )
+    quantity_kwh: Mapped[float] = mapped_column(Float, nullable=False)
+    price_inr_kwh: Mapped[float] = mapped_column(Float, nullable=False)
+    total_value_inr: Mapped[float] = mapped_column(Float, nullable=False)
+    status: Mapped[str] = mapped_column(String(20), default="completed", nullable=False)
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow, onupdate=utcnow)
+
+    buyer: Mapped[User] = relationship(foreign_keys=[buyer_user_id])
+    seller: Mapped[User] = relationship(foreign_keys=[seller_user_id])
+    offer: Mapped[EnergyOffer] = relationship()
+    transaction: Mapped[Transaction | None] = relationship()

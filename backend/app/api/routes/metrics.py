@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Annotated
+
 from fastapi import APIRouter, Depends
 from sqlalchemy import desc, select
 from sqlalchemy.orm import Session
@@ -7,13 +9,17 @@ from sqlalchemy.orm import Session
 from ...db import get_db
 from ...models import TickSnapshot
 from ...schemas import PricingOut
-from ...services.simulation import get_config, latest_tick, simulation_payload
+from ...services.security import AdminUser, AnyUser
+from ...services.simulation import simulation_payload
 
 router = APIRouter(tags=["metrics"])
 
 
 @router.get("/metrics/summary", response_model=dict)
-def metrics_summary(db: Session = Depends(get_db)) -> dict:  # type: ignore[type-arg]
+def metrics_summary(
+    _user: AdminUser,
+    db: Annotated[Session, Depends(get_db)],
+) -> dict:  # type: ignore[type-arg]
     payload = simulation_payload(db)
     return {
         "state": payload["state"],
@@ -24,12 +30,19 @@ def metrics_summary(db: Session = Depends(get_db)) -> dict:  # type: ignore[type
 
 
 @router.get("/pricing/current", response_model=PricingOut)
-def current_price(db: Session = Depends(get_db)) -> dict:  # type: ignore[type-arg]
+def current_price(
+    _user: AnyUser,
+    db: Annotated[Session, Depends(get_db)],
+) -> dict:  # type: ignore[type-arg]
     return simulation_payload(db)["pricing"]
 
 
 @router.get("/pricing/history", response_model=list[dict])
-def price_history(limit: int = 48, db: Session = Depends(get_db)) -> list[dict]:  # type: ignore[type-arg]
+def price_history(
+    _user: AnyUser,
+    db: Annotated[Session, Depends(get_db)],
+    limit: int = 48,
+) -> list[dict]:  # type: ignore[type-arg]
     rows = db.scalars(
         select(TickSnapshot).order_by(desc(TickSnapshot.tick)).limit(max(1, min(limit, 288)))
     ).all()

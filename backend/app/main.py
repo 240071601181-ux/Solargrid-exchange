@@ -2,11 +2,12 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
+import secrets
 import time
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
@@ -15,6 +16,7 @@ from .config import settings
 from .db import SessionLocal, init_db
 from .models import AppSetting, SimulationState
 from .services.realtime import hub
+from .services.security import ensure_bootstrap_admin, log_csrf_rejection
 from .services.simulation import advance_simulation, ensure_defaults, get_state
 from .services.weather import WeatherUnavailable, weather_status
 
@@ -60,6 +62,7 @@ async def lifespan(_app: FastAPI):
     init_db()
     with SessionLocal() as db:
         ensure_defaults(db)
+        ensure_bootstrap_admin(db)
         state = get_state(db)
         if state.status == "running":
             state.status = "paused"
@@ -83,10 +86,31 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+
+@app.middleware("http")
+async def csrf_middleware(request: Request, call_next):  # type: ignore[no-untyped-def]
+    """Double-submit CSRF validation for every state-changing API request.
+
+    The CSRF value is a readable same-site cookie while the session itself is
+    HttpOnly. Cross-origin JavaScript cannot read the cookie, and the API's CORS
+    policy only permits the configured frontend origins.
+    """
+    if (
+        request.method in {"POST", "PUT", "PATCH", "DELETE"}
+        and request.url.path.startswith(settings.api_prefix)
+    ):
+        header = request.headers.get("x-csrf-token")
+        cookie = request.cookies.get(settings.csrf_cookie_name)
+        if not header or not cookie or not secrets.compare_digest(header, cookie):
+            log_csrf_rejection(request, "missing or mismatched double-submit token")
+            return JSONResponse(status_code=403, content={"detail": "CSRF validation failed."})
+    return await call_next(request)
+
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origin_list,
-    allow_credentials=False,
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )

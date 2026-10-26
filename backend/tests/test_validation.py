@@ -61,24 +61,24 @@ def test_settings_patch_field_bounds() -> None:
         SettingsPatch(location_name="x")
 
 
-def test_api_rejects_invalid_scenario_and_evaluation_payloads(client) -> None:  # type: ignore[no-untyped-def]
-    scenario = client.post("/api/v1/simulation/scenario/cloud", json={"cloud_cover_pct": 95, "advance": True})
+def test_api_rejects_invalid_scenario_and_evaluation_payloads(admin_client) -> None:  # type: ignore[no-untyped-def]
+    scenario = admin_client.post("/api/v1/simulation/scenario/cloud", json={"cloud_cover_pct": 95, "advance": True})
     assert scenario.status_code == 422
 
-    evaluation = client.post("/api/v1/evaluation/run", json={"ticks": 7, "cloud_cover_pct": 50})
+    evaluation = admin_client.post("/api/v1/evaluation/run", json={"ticks": 7, "cloud_cover_pct": 50})
     assert evaluation.status_code == 422
 
-    settings = client.patch("/api/v1/settings", json={"base_price_inr_kwh": 0.1})
+    settings = admin_client.patch("/api/v1/settings", json={"base_price_inr_kwh": 0.1})
     assert settings.status_code == 422
 
 
-def test_api_rejects_inconsistent_final_price_bounds(client, db) -> None:  # type: ignore[no-untyped-def]
-    initial = client.get("/api/v1/settings")
+def test_api_rejects_inconsistent_final_price_bounds(admin_client, db) -> None:  # type: ignore[no-untyped-def]
+    initial = admin_client.get("/api/v1/settings")
     assert initial.status_code == 200
     assert initial.json()["settings"]["min_price_inr_kwh"] == 3.0
 
     # Base 2.0 is valid on its own but below the existing minimum, so the route rejects it.
-    response = client.patch("/api/v1/settings", json={"base_price_inr_kwh": 2.0})
+    response = admin_client.patch("/api/v1/settings", json={"base_price_inr_kwh": 2.0})
     assert response.status_code == 422
     assert "minimum ≤ base ≤ maximum" in response.json()["detail"]
 
@@ -87,8 +87,8 @@ def test_api_rejects_inconsistent_final_price_bounds(client, db) -> None:  # typ
     assert config.base_price_inr_kwh == 6.0
 
 
-def test_api_applies_valid_settings_and_persists(client, db) -> None:  # type: ignore[no-untyped-def]
-    response = client.patch(
+def test_api_applies_valid_settings_and_persists(admin_client, db) -> None:  # type: ignore[no-untyped-def]
+    response = admin_client.patch(
         "/api/v1/settings",
         json={
             "base_price_inr_kwh": 7.5,

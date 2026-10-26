@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any, Literal
 
-from pydantic import BaseModel, Field, ConfigDict, model_validator
+from pydantic import BaseModel, Field, ConfigDict, field_validator, model_validator
 
 
 class WeatherCurrentOut(BaseModel):
@@ -156,6 +156,7 @@ class TransactionOut(BaseModel):
     price_inr_kwh: float
     total_value_inr: float
     status: str
+    source: str = "simulation"
     created_at: datetime | None = None
     executed_at: datetime | None = None
 
@@ -362,3 +363,282 @@ class ErrorOut(BaseModel):
 
 class AIResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
+
+
+class RegisterRequest(BaseModel):
+    full_name: str = Field(min_length=2, max_length=120)
+    email: str = Field(min_length=3, max_length=320)
+    password: str = Field(min_length=10, max_length=128)
+    confirm_password: str = Field(min_length=10, max_length=128)
+    role: Literal["seller", "buyer"]
+    display_name: str | None = Field(default=None, max_length=80)
+    location_name: str = Field(default="Perur, Coimbatore, Tamil Nadu", min_length=2, max_length=120)
+    latitude: float = Field(default=10.976, ge=-90, le=90)
+    longitude: float = Field(default=76.914, ge=-180, le=180)
+    solar_capacity_kw: float | None = Field(default=None, ge=0, le=50)
+    has_battery: bool = False
+    battery_capacity_kwh: float | None = Field(default=None, ge=0, le=40)
+    household_category: Literal[
+        "residential", "apartment", "small_business", "shop", "farm", "other"
+    ] = "residential"
+    demand_base_kw: float | None = Field(default=None, ge=0.1, le=20)
+    terms_accepted: bool = False
+
+    @field_validator("email")
+    @classmethod
+    def validate_email(cls, value: str) -> str:
+        from .services.security import normalize_email, valid_email
+
+        normalized = normalize_email(value)
+        if not valid_email(normalized):
+            raise ValueError("Enter a valid email address.")
+        return normalized
+
+    @field_validator("password")
+    @classmethod
+    def validate_password(cls, value: str) -> str:
+        from .services.security import validate_password_policy
+
+        validate_password_policy(value)
+        return value
+
+    @model_validator(mode="after")
+    def validate_registration(self) -> "RegisterRequest":
+        if self.password != self.confirm_password:
+            raise ValueError("Passwords do not match.")
+        if not self.terms_accepted:
+            raise ValueError("You must acknowledge the simulation and privacy terms.")
+        if self.role == "seller" and (self.solar_capacity_kw or 0.0) < 0:
+            raise ValueError("Solar capacity cannot be negative.")
+        return self
+
+
+class LoginRequest(BaseModel):
+    email: str = Field(min_length=3, max_length=320)
+    password: str = Field(min_length=1, max_length=128)
+
+    @field_validator("email")
+    @classmethod
+    def normalize(cls, value: str) -> str:
+        from .services.security import normalize_email
+
+        return normalize_email(value)
+
+
+class AuthUserOut(BaseModel):
+    id: int
+    full_name: str
+    email: str
+    role: Literal["seller", "buyer", "admin"]
+    status: str
+    created_at: datetime | None = None
+
+
+class SessionOut(BaseModel):
+    user: AuthUserOut | None
+    csrf_token: str
+
+
+class AuthResponse(BaseModel):
+    user: AuthUserOut
+    csrf_token: str
+
+
+class CsrfOut(BaseModel):
+    csrf_token: str
+
+
+class SellerProfileOut(BaseModel):
+    user_id: int
+    display_name: str
+    location_name: str
+    latitude: float
+    longitude: float
+    solar_capacity_kw: float
+    has_battery: bool
+    battery_capacity_kwh: float
+    household_category: str
+    demand_base_kw: float
+    household_id: str
+    updated_at: datetime | None = None
+
+
+class BuyerProfileOut(BaseModel):
+    user_id: int
+    display_name: str
+    location_name: str
+    latitude: float
+    longitude: float
+    household_category: str
+    demand_base_kw: float
+    household_id: str
+    updated_at: datetime | None = None
+
+
+class ProfilePatch(BaseModel):
+    display_name: str | None = Field(default=None, min_length=2, max_length=80)
+    location_name: str | None = Field(default=None, min_length=2, max_length=120)
+    latitude: float | None = Field(default=None, ge=-90, le=90)
+    longitude: float | None = Field(default=None, ge=-180, le=180)
+    solar_capacity_kw: float | None = Field(default=None, ge=0, le=50)
+    has_battery: bool | None = None
+    battery_capacity_kwh: float | None = Field(default=None, ge=0, le=40)
+    household_category: Literal[
+        "residential", "apartment", "small_business", "shop", "farm", "other"
+    ] | None = None
+    demand_base_kw: float | None = Field(default=None, ge=0.1, le=20)
+
+
+class OfferCreate(BaseModel):
+    quantity_kwh: float = Field(gt=0, le=10000)
+    price_inr_kwh: float = Field(ge=0.5, le=50)
+    note: str = Field(default="", max_length=280)
+
+
+class OfferUpdate(BaseModel):
+    quantity_kwh: float | None = Field(default=None, gt=0, le=10000)
+    price_inr_kwh: float | None = Field(default=None, ge=0.5, le=50)
+    note: str | None = Field(default=None, max_length=280)
+
+
+class OfferOut(BaseModel):
+    id: int
+    seller_user_id: int
+    seller_display_name: str
+    location_name: str
+    quantity_kwh: float
+    remaining_kwh: float
+    sold_kwh: float
+    price_inr_kwh: float
+    estimated_total_inr: float
+    status: str
+    note: str = ""
+    created_at: datetime | None = None
+    updated_at: datetime | None = None
+
+
+class OfferListOut(BaseModel):
+    items: list[OfferOut]
+    count: int
+
+
+class OfferAvailabilityOut(BaseModel):
+    available_to_offer_kwh: float
+    daily_surplus_kwh: float
+    reserved_offer_kwh: float
+    forecast_freshness: str
+    has_forecast: bool
+
+
+class PurchaseCreate(BaseModel):
+    offer_id: int = Field(gt=0)
+    quantity_kwh: float = Field(gt=0, le=10000)
+
+
+class PurchaseOut(BaseModel):
+    id: int
+    offer_id: int
+    buyer_user_id: int
+    seller_user_id: int
+    buyer_display_name: str
+    seller_display_name: str
+    quantity_kwh: float
+    price_inr_kwh: float
+    total_value_inr: float
+    status: str
+    offer_status: str | None = None
+    transaction_id: int | None = None
+    created_at: datetime | None = None
+
+
+class PurchaseListOut(BaseModel):
+    items: list[PurchaseOut]
+    count: int
+
+
+class MarketDemandOut(BaseModel):
+    registered_buyers: int
+    total_baseline_demand_kw: float
+    active_offers: int
+    privacy_note: str
+
+
+class EarningsOut(BaseModel):
+    energy_sold_kwh: float
+    simulated_sales_value_inr: float
+    average_realized_price_inr_kwh: float | None
+    completed_sales: int
+    recent_sales: list[PurchaseOut]
+    daily_series: list[dict[str, Any]]
+
+
+class SpendingOut(BaseModel):
+    energy_purchased_kwh: float
+    simulated_spend_inr: float
+    average_purchase_price_inr_kwh: float | None
+    completed_purchases: int
+    recent_purchases: list[PurchaseOut]
+    daily_series: list[dict[str, Any]]
+
+
+class AccountEnergyOut(BaseModel):
+    household: dict[str, Any]
+    current: dict[str, Any]
+    daily: dict[str, Any]
+    forecast: dict[str, Any]
+    weather: WeatherCurrentOut | None
+    weather_error: str | None = None
+    assumptions: list[str]
+
+
+class SellerDashboardOut(BaseModel):
+    profile: SellerProfileOut
+    energy: AccountEnergyOut
+    offers: list[OfferOut]
+    today: dict[str, Any]
+    earnings: EarningsOut
+    market_demand: MarketDemandOut
+    pricing: dict[str, Any]
+    assumptions: list[str]
+
+
+class BuyerDashboardOut(BaseModel):
+    profile: BuyerProfileOut
+    energy: AccountEnergyOut
+    available_offers: list[OfferOut]
+    spending: SpendingOut
+    pricing: dict[str, Any]
+    assumptions: list[str]
+
+
+class BuyerUsageOut(BaseModel):
+    profile: BuyerProfileOut
+    energy: AccountEnergyOut
+    spending: SpendingOut
+
+
+class BuyerPricesPoint(BaseModel):
+    timestamp: str
+    generation_kw: float
+    demand_kw: float
+    price_inr_kwh: float
+    cloud_cover_pct: float | None = None
+    irradiance_w_m2: float | None = None
+    demand_basis: str | None = None
+
+
+class BuyerPricesOut(BaseModel):
+    current: PricingOut
+    history: list[dict[str, Any]]
+    forecast: list[BuyerPricesPoint]
+    weather: WeatherCurrentOut | None
+    freshness: str
+    assumptions: list[str]
+
+
+class SharedStatusOut(BaseModel):
+    state: SimulationStatusOut
+    weather: WeatherCurrentOut | None
+    pricing: PricingOut
+    shared_note: str
+

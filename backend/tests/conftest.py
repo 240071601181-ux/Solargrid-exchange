@@ -14,6 +14,13 @@ if str(BACKEND_ROOT) not in sys.path:
 
 from app import models  # noqa: E402,F401  (register ORM tables)
 from app.db import Base  # noqa: E402
+from app.services.security import login_limiter, registration_limiter  # noqa: E402
+
+
+@pytest.fixture(autouse=True)
+def _clear_rate_limiters() -> None:
+    login_limiter._events.clear()
+    registration_limiter._events.clear()
 
 
 @pytest.fixture()
@@ -43,8 +50,7 @@ def db() -> Session:
 
 
 @pytest.fixture()
-def client(db: Session):
-    """FastAPI test client bound to the isolated database, without lifespan/auto-tick."""
+def client_factory(db: Session):
     from fastapi.testclient import TestClient
 
     from app.db import get_db
@@ -54,9 +60,62 @@ def client(db: Session):
         yield db
 
     app.dependency_overrides[get_db] = override_get_db
-    test_client = TestClient(app)
+    clients: list[TestClient] = []
+
+    def make() -> TestClient:
+        test_client = TestClient(app)
+        clients.append(test_client)
+        return test_client
+
     try:
-        yield test_client
+        yield make
     finally:
-        test_client.close()
+        for test_client in clients:
+            test_client.close()
         app.dependency_overrides.clear()
+
+
+@pytest.fixture()
+def client(client_factory):
+    return client_factory()
+
+
+@pytest.fixture()
+def admin_client(client_factory, db: Session):
+    from tests.auth_helpers import create_user, login
+
+    test_client = client_factory()
+    create_user(db, "admin@example.com", "AdminPass123!", "admin", "Grid Operator")
+    login(test_client, "admin@example.com", "AdminPass123!")
+    return test_client
+
+
+@pytest.fixture()
+def seller_client(client_factory, db: Session):
+    from tests.auth_helpers import register
+
+    test_client = client_factory()
+    register(
+        test_client,
+        email="seller@example.com",
+        password="SellerPass123!",
+        role="seller",
+        full_name="Seller Account",
+        solar_capacity_kw=4.0,
+    )
+    return test_client
+
+
+@pytest.fixture()
+def buyer_client(client_factory, db: Session):
+    from tests.auth_helpers import register
+
+    test_client = client_factory()
+    register(
+        test_client,
+        email="buyer@example.com",
+        password="BuyerPass123!",
+        role="buyer",
+        full_name="Buyer Account",
+    )
+    return test_client
